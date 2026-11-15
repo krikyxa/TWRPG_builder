@@ -83,6 +83,12 @@ button.btn:hover{border-color:var(--accent)}
 .done>.node .nm{text-decoration:line-through;opacity:.55}
 .qty{color:var(--muted);font-size:13px}
 .alt{font-size:13px;padding:2px 4px}
+.prog{font:12px Arial,sans-serif;color:#bbb;background:#333;border-radius:8px;padding:1px 6px;margin-left:4px}
+.prog.full{background:#24502a;color:#9be59f}
+.bgrp{margin-bottom:10px}
+.bhead{font-size:15px;border-bottom:1px solid #3a3a3a;padding-bottom:2px;margin-bottom:3px}
+.need .rate{color:var(--accent);font-size:13px}
+.need{flex-wrap:wrap;padding-left:6px}
 #needWrap{display:none}
 #needWrap.on{display:block}
 #craftTree.off{display:none}
@@ -293,6 +299,18 @@ function itemLink(name, extra = '') {
 function bossLink(name) {
   return bossByName.has(name) ? `<a class="link" data-goto-boss="${esc(name)}" style="color:${col(bossByName.get(name).color)}">${esc(name)}</a>` : esc(name);
 }
+const GRADES = {1: 'Deltirama', 2: 'Neptinos', 3: 'Gnosis', 4: 'Alteia', 5: 'Arcana'};
+const gradeLabel = it => it.grade && GRADES[it.grade] ? GRADES[it.grade] : (it.rank && it.rank !== 'none' ? it.rank.replace(/[\[\]]/g, '') : '');
+const CUR_SHORT = {'Prius Silver Coin': 'Silver', 'Prius Gold Coin': 'Gold', 'Prius Platinum Coin': 'Platinum', 'Coin of Effort': 'Effort'};
+const isCurrency = n => n in CUR_SHORT || /'s Soulstone$/.test(n);
+const curShort = n => CUR_SHORT[n] || n;
+// "3 Gold" if the item's recipe is only currency (bought from the Collector), else null
+function buyPrice(it) {
+  if (!it || !it.recipe || !it.recipe.length) return null;
+  if (!it.recipe.every(g => g.length === 1 && isCurrency(g[0][0]))) return null;
+  return it.recipe.map(g => g[0][1] + ' ' + curShort(g[0][0])).join(' + ');
+}
+function buyParts(it, qty) { return it.recipe.map(g => [g[0][0], g[0][1] * qty]); }
 const pct = r => { const v = r * 100; return (v >= 1 ? +v.toFixed(2) : +v.toPrecision(3)) + '%'; };
 function rateFor(item, bossName) {
   const by = item.dropped_by || [], dr = item.droprate;
@@ -326,11 +344,12 @@ function statsHtml(stats, withSrc) {
 function itemCard(it, full = false) {
   if (!it) return '';
   let h = `<div class="card"><div class="hd">${icon(it.name)}<div><div class="nm" style="color:${col(it.color)}">${esc(it.name)}</div>
-    <div class="sub">${esc([it.rank !== 'none' ? it.rank : '', it.grade ? 'Grade ' + it.grade : '', it.type].filter(Boolean).join(' · '))}</div></div></div>`;
+    <div class="sub">${esc([(it.grade && it.rank !== 'none' ? it.rank + ' ' : '') + gradeLabel(it), it.type].filter(Boolean).join(' · '))}</div></div></div>`;
   if (it.description) h += `<div class="desc">${esc(it.description)}</div>`;
   h += statsHtml(it.stats);
   if (it.level) h += `<div class="lvl">Level ${esc(it.level)}</div>`;
-  if (it.recipe && !full) h += `<div class="sec muted">Рецепт: ${it.recipe.map(g => g.map(([n, q]) => esc(n) + (q > 1 ? ' ×' + q : '')).join(' / ')).join(', ')}</div>`;
+  if (buyPrice(it) && !full) h += `<div class="sec muted">Покупка: ${esc(buyPrice(it))}</div>`;
+  else if (it.recipe && !full) h += `<div class="sec muted">Рецепт: ${it.recipe.map(g => g.map(([n, q]) => esc(n) + (q > 1 ? ' ×' + q : '')).join(' / ')).join(', ')}</div>`;
   if (it.dropped_by && !full) h += `<div class="sec muted">Падает с: ${it.dropped_by.map(b => { const r = rateFor(it, b); return esc(b) + (r != null ? ` (${pct(r)})` : ''); }).join(', ')}</div>`;
   if (it.notes && !full) h += `<div class="sec muted">${asArr(it.notes).map(esc).join('<br>')}</div>`;
   return h + '</div>';
@@ -462,15 +481,31 @@ function renderStats() {
 }
 
 /* ---------- crafting tree ---------- */
+// child paths of a crafted item (respecting chosen alternatives)
+function childPaths(it, path) {
+  return it.recipe.map((g, gi) => {
+    const p = path + '/' + gi;
+    if (g.length === 1) return [g[0][0], g[0][1], p];
+    const ai = state.alt[p] || 0;
+    return [g[ai][0], g[ai][1], p + ':' + ai];
+  });
+}
+const craftable = it => it && it.recipe && it.recipe.length && !buyPrice(it);
 function craftNode(name, qty, path) {
   const it = byName.get(name);
   const checked = !!state.checked[path];
-  const hasRec = it && it.recipe && it.recipe.length;
+  const hasRec = craftable(it);
   const open = hasRec && (path in state.open ? state.open[path] : path.indexOf('/') < 0);
+  const price = buyPrice(it);
+  let prog = '';
+  if (hasRec && !checked) {
+    const kids = childPaths(it, path), x = kids.filter(k => state.checked[k[2]]).length;
+    prog = ` <span class="prog ${x === kids.length ? 'full' : ''}" title="Собрано компонентов для крафта">${x} / ${kids.length}</span>`;
+  }
   let h = `<li class="${checked ? 'done' : ''}"><div class="node">
     <input type="checkbox" data-ck="${esc(path)}" ${checked ? 'checked' : ''} title="Уже есть">
     <span class="caret" data-tg="${esc(path)}">${hasRec ? (open ? '▾' : '▸') : ''}</span>
-    <span class="nm">${itemLink(name)}</span>${qty > 1 ? ` <span class="qty">×${qty}</span>` : ''}</div>`;
+    <span class="nm">${itemLink(name)}</span>${qty > 1 ? ` <span class="qty">×${qty}</span>` : ''}${price ? ` <span class="qty">(${esc(buyParts(it, qty).map(([c, k]) => k + ' ' + curShort(c)).join(' + '))})</span>` : ''}${prog}</div>`;
   if (open && !checked) {
     h += '<ul class="tree">' + it.recipe.map((g, gi) => {
       const p = path + '/' + gi;
@@ -483,15 +518,17 @@ function craftNode(name, qty, path) {
   }
   return h + '</li>';
 }
+// leaves = items to obtain (drops, or buyable items as themselves — coins are only an alternative)
 function collectNeeds(name, qty, path, acc) {
   if (state.checked[path]) return;
   const it = byName.get(name);
-  if (!it || !it.recipe || !it.recipe.length) { acc.set(name, (acc.get(name) || 0) + qty); return; }
-  it.recipe.forEach((g, gi) => {
-    const p = path + '/' + gi;
-    if (g.length === 1) collectNeeds(g[0][0], g[0][1] * qty, p, acc);
-    else { const ai = state.alt[p] || 0; collectNeeds(g[ai][0], g[ai][1] * qty, p + ':' + ai, acc); }
-  });
+  if (!craftable(it)) { acc.set(name, (acc.get(name) || 0) + qty); return; }
+  childPaths(it, path).forEach(([n, q, p]) => collectNeeds(n, q * qty, p, acc));
+}
+function needRow(n, q, extra) {
+  const it = byName.get(n) || {}, price = buyPrice(it);
+  const alt = price ? ` <span class="src">(или ${esc(buyParts(it, q).map(([c, k]) => k + ' ' + curShort(c)).join(' + '))})</span>` : '';
+  return `<div class="need"><span data-item="${esc(n)}">${icon(n, 'sm')}</span>${itemLink(n)} <span class="qty">×${q}</span>${extra || ''}${alt}</div>`;
 }
 function renderCraft() {
   const eq = SLOTS.filter(s => state.equipped[s]);
@@ -503,15 +540,37 @@ function renderCraft() {
   const wrap = document.getElementById('needWrap');
   document.getElementById('needCount').textContent = acc.size ? '(' + acc.size + ')' : '';
   if (!acc.size) { wrap.innerHTML = eq.length ? '<div class="muted">Всё собрано.</div>' : '<div class="muted">Наденьте предмет.</div>'; return; }
-  wrap.innerHTML = [...acc.entries()]
-    .sort((a, b) => (byName.get(b[0])?.grade || 0) - (byName.get(a[0])?.grade || 0))
-    .map(([n, q]) => {
-      const it = byName.get(n) || {};
-      const src = (it.dropped_by || []).map(b => { const r = rateFor(it, b); return bossLink(b) + (r != null ? ` ${pct(r)}` : ''); }).join(', ');
-      const notes = !src && it.notes ? esc(asArr(it.notes).join('; ')) : '';
-      return `<div class="need"><span data-item="${esc(n)}">${icon(n, 'sm')}</span>${itemLink(n)} <span class="qty">×${q}</span>
-        ${src || notes ? `<span class="src">— ${src || notes}</span>` : ''}</div>`;
+
+  // group by boss
+  const groups = new Map(), buyOnly = [], other = [], coinTotal = new Map();
+  for (const [n, q] of acc) {
+    const it = byName.get(n) || {};
+    if (buyPrice(it)) buyParts(it, q).forEach(([c, k]) => coinTotal.set(c, (coinTotal.get(c) || 0) + k));
+    const src = it.dropped_by || [];
+    if (src.length) src.forEach(b => { if (!groups.has(b)) groups.set(b, []); groups.get(b).push([n, q]); });
+    else if (buyPrice(it)) buyOnly.push([n, q]);
+    else other.push([n, q]);
+  }
+  const lvl = b => +(bossByName.get(b)?.level) || 0;
+  const bosses = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length || lvl(b) - lvl(a));
+  let h = '';
+  if (coinTotal.size) h += `<div class="muted" style="font-size:13px;margin-bottom:6px">Если покупать всё, что продаётся за монеты: ${[...coinTotal].map(([c, k]) => k + ' ' + esc(curShort(c))).join(', ')}</div>`;
+  h += bosses.map(b => {
+    const rows = groups.get(b).map(([n, q]) => {
+      const it = byName.get(n), r = rateFor(it, b);
+      const others = (it.dropped_by || []).filter(x => x !== b);
+      return needRow(n, q, (r != null ? ` <span class="rate">${pct(r)}</span>` : '') +
+        (others.length ? ` <span class="src">также: ${others.map(bossLink).join(', ')}</span>` : ''));
     }).join('');
+    const bo = bossByName.get(b);
+    return `<div class="bgrp"><div class="bhead">${bossLink(b)}${bo ? ` <span class="muted">· Lv ${esc(bo.level)}</span>` : ''} <span class="muted">· ${groups.get(b).length} шт.</span>${bo && bo.location ? `<div class="src" style="font-size:12px">${esc(bo.location)}</div>` : ''}</div>${rows}</div>`;
+  }).join('');
+  if (buyOnly.length) h += `<div class="bgrp"><div class="bhead">Только покупка у Collector</div>${buyOnly.map(([n, q]) => needRow(n, q)).join('')}</div>`;
+  if (other.length) h += `<div class="bgrp"><div class="bhead">Прочее</div>${other.map(([n, q]) => {
+    const it = byName.get(n) || {};
+    return needRow(n, q, it.notes ? ` <span class="src">— ${esc(asArr(it.notes).join('; '))}</span>` : '');
+  }).join('')}</div>`;
+  wrap.innerHTML = h;
 }
 document.getElementById('crafting').addEventListener('change', e => {
   if (e.target.dataset.ck) { const k = e.target.dataset.ck; if (e.target.checked) state.checked[k] = 1; else delete state.checked[k]; }
@@ -520,7 +579,7 @@ document.getElementById('crafting').addEventListener('change', e => {
 });
 function walkPaths(name, path, fn) {
   const it = byName.get(name);
-  if (!it || !it.recipe || !it.recipe.length) return;
+  if (!craftable(it)) return;
   fn(path);
   it.recipe.forEach((g, gi) => {
     const p = path + '/' + gi;
@@ -568,7 +627,7 @@ function renderPick() {
   document.getElementById('pickList').innerHTML = note + (state.equipped[pickSlot] ? `<div class="prow" data-choose=""><span class="muted">— Снять предмет —</span></div>` : '') +
     list.map(it => `<div class="prow" data-choose="${esc(it.name)}" data-item="${esc(it.name)}">${icon(it.name, 'md')}
       <span style="color:${col(it.color)}">${esc(it.name)}</span>
-      <span class="meta">${it.level ? 'Lv ' + it.level : ''}<br>${esc(it.type.replace('Weapon ', ''))}</span></div>`).join('') ||
+      <span class="meta">${[it.level ? 'Lv ' + it.level : '', esc(gradeLabel(it))].filter(Boolean).join(' · ')}<br>${esc(it.type.replace('Weapon ', ''))}</span></div>`).join('') ||
     '<div class="muted">Ничего не найдено.</div>';
 }
 pickSearch.oninput = renderPick;
@@ -655,24 +714,26 @@ document.getElementById('bList').addEventListener('click', e => { const r = e.ta
 /* =================== ITEMS =================== */
 const TYPES = [...new Set(ITEMS.map(i => i.type))].sort();
 document.getElementById('iType').innerHTML = '<option value="">Все типы</option>' + TYPES.map(t => `<option>${esc(t)}</option>`).join('');
-const RANKS = [...new Set(ITEMS.map(i => i.rank))];
-document.getElementById('iRank').innerHTML = '<option value="">Любая редкость</option>' + RANKS.map(t => `<option>${esc(t)}</option>`).join('');
+const GRADE_ORDER = ['Normal', 'Magic', 'Rare', 'Deltirama', 'Neptinos', 'Gnosis', 'Alteia', 'Arcana'];
+const RANKS = [...new Set(ITEMS.map(gradeLabel).filter(Boolean))].sort((a, b) => (GRADE_ORDER.indexOf(a) + 1 || 99) - (GRADE_ORDER.indexOf(b) + 1 || 99));
+document.getElementById('iRank').innerHTML = '<option value="">Любой грейд</option>' + RANKS.map(t => `<option>${esc(t)}</option>`).join('');
 let curItem = null;
 function renderItemList() {
   const q = document.getElementById('iSearch').value.trim().toLowerCase();
   const t = document.getElementById('iType').value, r = document.getElementById('iRank').value;
-  const list = ITEMS.filter(i => (!t || i.type === t) && (!r || i.rank === r) &&
+  const list = ITEMS.filter(i => (!t || i.type === t) && (!r || gradeLabel(i) === r) &&
     (!q || i.name.toLowerCase().includes(q) || JSON.stringify(i.stats || '').toLowerCase().includes(q)))
     .sort((a, b) => (b.level || 0) - (a.level || 0) || (b.grade || 0) - (a.grade || 0) || a.name.localeCompare(b.name));
   document.getElementById('iList').innerHTML = list.map(i =>
     `<div class="lrow ${i === curItem ? 'sel' : ''}" data-sel-item="${esc(i.name)}" data-item="${esc(i.name)}">${icon(i.name, 'md')}
-     <span style="color:${col(i.color)}">${esc(i.name)}</span><span class="meta">${i.level ? 'Lv ' + i.level + '<br>' : ''}${esc(i.type)}</span></div>`).join('') +
+     <span style="color:${col(i.color)}">${esc(i.name)}</span><span class="meta">${[i.level ? 'Lv ' + i.level : '', esc(gradeLabel(i))].filter(Boolean).join(' · ')}<br>${esc(i.type)}</span></div>`).join('') +
     '' || '<div class="muted">Ничего не найдено.</div>';
 }
 function recipeTree(name, qty, depth) {
   const it = byName.get(name);
-  let h = `<li><span class="node"><span data-item="${esc(name)}">${icon(name, 'sm')}</span>${itemLink(name)}${qty > 1 ? ` <span class="qty">×${qty}</span>` : ''}</span>`;
-  if (it && it.recipe && depth < 8) h += '<ul class="tree">' + it.recipe.map(g => g.length === 1 ? recipeTree(g[0][0], g[0][1] * qty, depth + 1)
+  const price = depth > 0 && buyPrice(it);
+  let h = `<li><span class="node"><span data-item="${esc(name)}">${icon(name, 'sm')}</span>${itemLink(name)}${qty > 1 ? ` <span class="qty">×${qty}</span>` : ''}${price ? ` <span class="qty">(${esc(buyParts(it, qty).map(([c, k]) => k + ' ' + curShort(c)).join(' + '))})</span>` : ''}</span>`;
+  if (it && it.recipe && !price && depth < 8) h += '<ul class="tree">' + it.recipe.map(g => g.length === 1 ? recipeTree(g[0][0], g[0][1] * qty, depth + 1)
     : `<li><span class="muted" style="font-size:13px">Одно из:</span><ul class="tree">${g.map(([n, q]) => recipeTree(n, q * qty, depth + 1)).join('')}</ul></li>`).join('') + '</ul>';
   return h + '</li>';
 }
