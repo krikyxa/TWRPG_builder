@@ -75,29 +75,30 @@ button.btn:hover{border-color:var(--accent)}
 #activeInd a{color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline}
 #autoSaved{color:#8fd18f;font-size:12px;min-width:80px}
 #bMsg.err{color:#ff8a80}
-/* chain tab */
-.chainbar{font-size:14px;margin-bottom:10px}
-.csec{background:var(--panel2);border-radius:4px;padding:10px 14px;margin-bottom:12px}
-.csec h3{font-size:16px;font-weight:normal;margin:0 0 8px;display:flex;gap:8px;align-items:center}
-.cwrap{overflow-x:auto;padding:4px 2px 8px}
-.chain{display:flex;align-items:center;width:max-content}
-.kids{display:flex;flex-direction:column;align-items:flex-end;gap:6px;border-right:2px solid #5a5a5a;padding:0}
-.kid{position:relative;padding-right:12px;display:flex;align-items:center;justify-content:flex-end}
-.kid:after{content:"";position:absolute;right:0;top:50%;width:12px;border-top:2px solid #5a5a5a}
-.arrow{width:22px;height:2px;background:#5a5a5a;position:relative;flex:none}
-.arrow:after{content:"";position:absolute;right:-1px;top:-5px;border:6px solid transparent;border-left:7px solid #5a5a5a;border-right:0}
-.cic{position:relative;cursor:pointer;flex:none;margin-left:4px}
-.cic .icon{width:42px;height:42px;border:2px solid #444;transition:filter .1s}
-.cic.miss .icon{filter:grayscale(.65) brightness(.75)}
-.cic.have .icon{border-color:#4caf50}
-.cic:hover .icon{filter:none;border-color:var(--accent)}
-.cic .q{position:absolute;right:-4px;bottom:-4px;background:#000;color:#fff;font:bold 11px Arial,sans-serif;padding:0 3px;border-radius:3px}
-.cic .ok{position:absolute;left:-5px;top:-5px;background:#4caf50;color:#fff;font:bold 10px/14px Arial,sans-serif;width:14px;height:14px;border-radius:50%;text-align:center}
-.cic .pr{position:absolute;left:-5px;bottom:-4px;background:#b8902f;color:#000;font:bold 9px/12px Arial,sans-serif;padding:0 3px;border-radius:3px}
-.cic .alt2{position:absolute;right:-5px;top:-5px;background:#555;color:#fff;font:10px/14px Arial,sans-serif;padding:0 3px;border-radius:7px}
-.cic.big .icon{width:56px;height:56px}
-.cprog{font:12px Arial,sans-serif;color:#bbb;background:#333;border-radius:8px;padding:1px 6px}
-.cprog.full{background:#24502a;color:#9be59f}
+/* icons tab */
+.ibar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.ibar select{min-width:220px}
+.isplit{display:grid;grid-template-columns:1fr 380px;gap:12px;height:max(560px,calc(100vh - 210px))}
+.isplit>.box{min-height:0}
+.istep{border:1px solid #333;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#1f1f1f}
+.istep.done{opacity:.5}
+.istep.ready{border-color:#2f6b35}
+.ihead{display:flex;gap:10px;align-items:center}
+.ihead .num{font:bold 13px Arial,sans-serif;color:#000;background:var(--accent);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex:none}
+.ihead .icon{width:46px;height:46px}
+.ihead .info{flex:1;min-width:0}
+.ihead .st{font-size:13px;color:#b9d7b9}
+.ihead .src{font-size:13px;color:var(--muted)}
+.ihead label{font-size:14px;white-space:nowrap;cursor:pointer;display:flex;gap:5px;align-items:center}
+.iparts{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px 32px}
+.chip{display:flex;align-items:center;gap:6px;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:4px;padding:3px 8px 3px 3px;font-size:14px;cursor:pointer;user-select:none}
+.chip:hover{border-color:var(--accent)}
+.chip.have{border-color:#3f8a46;background:#1f3322}
+.chip.have .nm2{text-decoration:line-through;opacity:.7}
+.chip.isicon{cursor:default;border-style:dashed}
+.chip .ck{font:bold 12px Arial,sans-serif;color:#7ad07f;width:12px}
+.chip .p{color:var(--accent);font-size:12px}
+@media (max-width:980px){.isplit{grid-template-columns:1fr;height:auto}.isplit>.box{max-height:70vh}}
 /* crafting tree */
 .tree{list-style:none;margin:0 0 0 7px;padding-left:12px;border-left:1px solid #3c3c3c}
 .tree.root{margin:0;padding-left:0;border-left:none}
@@ -184,7 +185,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 20px;color:var(--muted);fon
     <button data-page="builder" class="on">Билдер</button>
     <button data-page="bosses">Боссы и дроп</button>
     <button data-page="items">Предметы</button>
-    <button data-page="chain">Цепочка крафта</button>
+    <button data-page="icons">Иконки</button>
   </nav>
 </header>
 <main>
@@ -261,9 +262,17 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 20px;color:var(--muted);fon
   </section>
 
   <!-- ===== Items ===== -->
-  <section class="page" id="p-chain">
-    <div class="chainbar muted">Материалы слева → готовая вещь справа. Клик по иконке — отметить «есть» (синхронно с деревом крафта). Наведите на иконку, чтобы увидеть предмет. Значок <b style="background:#b8902f;color:#000;padding:0 3px;border-radius:3px;font:bold 10px Arial">$</b> — можно купить за монеты (цена в подсказке), «или» — один из вариантов рецепта.</div>
-    <div id="chainBody"></div>
+  <section class="page" id="p-icons">
+    <div class="ibar">
+      <span>Цель:</span> <select id="iconTarget"></select>
+      <span id="iconTotal" class="muted"></span>
+      <label class="muted"><input type="checkbox" id="iconHide"> скрыть собранные</label>
+      <span class="muted" style="font-size:13px">Клик по вещи в рецепте — отметить «есть». «Собрана» у иконки — отмечает её и все предыдущие.</span>
+    </div>
+    <div class="isplit">
+      <div class="box scroll" id="iconSteps"></div>
+      <div class="box" style="display:flex;flex-direction:column;min-height:0"><h2>Что добыть <span id="iconNeedCount" class="muted"></span></h2><div class="scroll" id="iconNeed" style="flex:1"></div></div>
+    </div>
   </section>
 
   <section class="page" id="p-items">
@@ -429,11 +438,12 @@ const state = {
   checked: store.get('checked', {}),
   alt: store.get('alt', {}),
   open: store.get('open', {}),
+  icons: store.get('icons', {target: 'Legend Icon', owned: {}, parts: {}, hideDone: false}),
 };
 let builds = store.get('builds', {});
 let activeBuild = store.get('active', '');
 if (activeBuild && !builds[activeBuild]) activeBuild = '';
-const snapshot = () => JSON.parse(JSON.stringify({hero: state.hero, equipped: state.equipped, checked: state.checked, alt: state.alt}));
+const snapshot = () => JSON.parse(JSON.stringify({hero: state.hero, equipped: state.equipped, checked: state.checked, alt: state.alt, icons: state.icons}));
 const save = () => {
   for (const k in state) store.set(k, state[k]);
   if (activeBuild && builds[activeBuild]) { builds[activeBuild] = snapshot(); store.set('builds', builds); flashSaved(); }
@@ -595,7 +605,9 @@ function renderCraft() {
   document.getElementById('needCount').textContent = acc.size ? '(' + acc.size + ')' : '';
   if (!acc.size) { wrap.innerHTML = eq.length ? '<div class="muted">Всё собрано.</div>' : '<div class="muted">Наденьте предмет.</div>'; return; }
 
-  // group by boss
+  wrap.innerHTML = needGroupsHtml(acc);
+}
+function needGroupsHtml(acc) {
   const groups = new Map(), buyOnly = [], other = [], coinTotal = new Map();
   for (const [n, q] of acc) {
     const it = byName.get(n) || {};
@@ -620,55 +632,15 @@ function renderCraft() {
     return `<div class="bgrp"><div class="bhead">${bossLink(b)}${bo ? ` <span class="muted">· Lv ${esc(bo.level)}</span>` : ''} <span class="muted">· ${groups.get(b).length} шт.</span>${bo && bo.location ? `<div class="src" style="font-size:12px">${esc(bo.location)}</div>` : ''}</div>${rows}</div>`;
   }).join('');
   if (buyOnly.length) h += `<div class="bgrp"><div class="bhead">Только покупка у Collector</div>${buyOnly.map(([n, q]) => needRow(n, q)).join('')}</div>`;
-  if (other.length) h += `<div class="bgrp"><div class="bhead">Прочее</div>${other.map(([n, q]) => {
+  const crafted = other.filter(([n]) => byName.get(n)?.recipe), misc = other.filter(([n]) => !byName.get(n)?.recipe);
+  if (crafted.length) h += `<div class="bgrp"><div class="bhead">Крафтятся <span class="muted" style="font-size:13px">— рецепт по клику на название</span></div>${crafted.map(([n, q]) => needRow(n, q)).join('')}</div>`;
+  if (misc.length) h += `<div class="bgrp"><div class="bhead">Прочее</div>${misc.map(([n, q]) => {
     const it = byName.get(n) || {};
     return needRow(n, q, it.notes ? ` <span class="src">— ${esc(asArr(it.notes).join('; '))}</span>` : '');
   }).join('')}</div>`;
-  wrap.innerHTML = h;
-  renderChain();
+  return h;
 }
 
-/* ---------- chain tab (icons) ---------- */
-function chainIcon(name, qty, path, opts = {}) {
-  const it = byName.get(name), have = !!state.checked[path], price = buyPrice(it);
-  const priceTxt = price ? buyParts(it, qty).map(([c, k]) => k + ' ' + curShort(c)).join('+') : '';
-  return `<div class="cic ${have ? 'have' : 'miss'} ${opts.big ? 'big' : ''}" data-cck="${esc(path)}" data-item="${esc(name)}" title="">
-    ${icon(name)}${qty > 1 ? `<span class="q">×${qty}</span>` : ''}${have ? '<span class="ok">✓</span>' : ''}
-    ${opts.alt ? `<span class="alt2" title="Одно из нескольких — вариант выбирается в дереве крафта">или</span>` : ''}
-    ${priceTxt && !have ? `<span class="pr">$</span>` : ''}</div>`;
-}
-function chainNode(name, qty, path, opts = {}) {
-  const it = byName.get(name);
-  if (!craftable(it) || state.checked[path]) return `<div class="chain">${chainIcon(name, qty, path, opts)}</div>`;
-  const kids = it.recipe.map((g, gi) => {
-    const p = path + '/' + gi;
-    if (g.length === 1) return chainNode(g[0][0], g[0][1] * qty, p);
-    const ai = state.alt[p] || 0;
-    return chainNode(g[ai][0], g[ai][1] * qty, p + ':' + ai, {alt: true});
-  });
-  return `<div class="chain"><div class="kids">${kids.map(k => `<div class="kid">${k}</div>`).join('')}</div><div class="arrow"></div>${chainIcon(name, qty, path, opts)}</div>`;
-}
-function renderChain() {
-  const eq = SLOTS.filter(s => state.equipped[s]);
-  const body = document.getElementById('chainBody'); if (!body) return;
-  body.innerHTML = eq.length ? eq.map(s => {
-    const n = state.equipped[s], it = byName.get(n);
-    let prog = '';
-    if (craftable(it) && !state.checked[s]) {
-      const kids = childPaths(it, s), x = kids.filter(k => state.checked[k[2]]).length;
-      prog = `<span class="cprog ${x === kids.length ? 'full' : ''}">${x} / ${kids.length}</span>`;
-    }
-    return `<div class="csec"><h3><span class="muted">${SLOT_LABEL[s]}:</span> ${itemLink(n)} ${prog}</h3>
-      <div class="cwrap">${chainNode(n, 1, s, {big: true})}</div></div>`;
-  }).join('') : '<div class="muted">Наденьте предметы на вкладке «Билдер» — здесь появятся их цепочки крафта.</div>';
-}
-document.getElementById('chainBody').addEventListener('click', e => {
-  const c = e.target.closest('[data-cck]'); if (!c) return;
-  e.stopPropagation(); e.preventDefault();
-  const k = c.dataset.cck;
-  if (state.checked[k]) delete state.checked[k]; else state.checked[k] = 1;
-  save(); renderCraft();
-}, true);
 document.getElementById('crafting').addEventListener('change', e => {
   if (e.target.dataset.ck) { const k = e.target.dataset.ck; if (e.target.checked) state.checked[k] = 1; else delete state.checked[k]; }
   if (e.target.dataset.alt) state.alt[e.target.dataset.alt] = +e.target.value;
@@ -740,6 +712,106 @@ picker.addEventListener('click', e => {
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePicker(); });
+
+/* =================== ICONS =================== */
+const ICON_ITEMS = ITEMS.filter(i => i.type === 'Icon');
+const isIcon = n => byName.get(n)?.type === 'Icon';
+const iconDepth = new Map();
+function depthOf(n) {
+  if (iconDepth.has(n)) return iconDepth.get(n);
+  const it = byName.get(n); let d = 0;
+  if (it && it.recipe && !buyPrice(it)) for (const g of it.recipe) for (const [c] of g) if (isIcon(c)) d = Math.max(d, depthOf(c) + 1);
+  iconDepth.set(n, d); return d;
+}
+ICON_ITEMS.forEach(i => depthOf(i.name));
+// progression level: how late in the game an icon's own materials come (drop boss level / item levels)
+const ownTier = n => { const it = byName.get(n);
+  if (!it.recipe || buyPrice(it)) return Math.min(...(it.dropped_by || []).map(b => +(bossByName.get(b)?.level) || 999), 999);
+  return Math.max(0, ...it.recipe.flatMap(g => g.map(([c]) => c)).filter(c => !isIcon(c)).map(c => byName.get(c)?.level || 0)); };
+const earlyMemo = new Map();
+function earliest(n) {
+  if (earlyMemo.has(n)) return earlyMemo.get(n);
+  const it = byName.get(n);
+  const kids = it.recipe && !buyPrice(it) ? it.recipe.flatMap(g => g.map(([c]) => c)).filter(isIcon) : [];
+  const v = Math.min(ownTier(n), ...kids.map(earliest)); earlyMemo.set(n, v); return v;
+}
+function iconSet(target) {                  // target + every icon needed for it
+  const out = new Set(), walk = n => { if (out.has(n)) return; out.add(n);
+    const it = byName.get(n); if (it && it.recipe && !buyPrice(it)) it.recipe.forEach(g => g.forEach(([c]) => isIcon(c) && walk(c))); };
+  walk(target); return out;
+}
+const iconSel = document.getElementById('iconTarget');
+iconSel.innerHTML = [...ICON_ITEMS].sort((a, b) => depthOf(b.name) - depthOf(a.name) || a.name.localeCompare(b.name))
+  .map(i => `<option value="${esc(i.name)}">${esc(i.name)}${depthOf(i.name) ? ` (шагов: ${iconSet(i.name).size})` : ''}</option>`).join('');
+function iconState() {
+  const s = state.icons || (state.icons = {});
+  s.owned ||= {}; s.parts ||= {}; if (!byName.has(s.target)) s.target = 'Legend Icon';
+  return s;
+}
+function renderIcons() {
+  const S = iconState(), set = iconSet(S.target);
+  iconSel.value = S.target; document.getElementById('iconHide').checked = !!S.hideDone;
+  // an icon is "done" if owned or consumed by a done icon in this target set
+  const users = n => [...set].filter(x => (byName.get(x).recipe || []).some(g => g.some(([c]) => c === n)));
+  const doneMemo = new Map(), done = n => { if (doneMemo.has(n)) return doneMemo.get(n);
+    doneMemo.set(n, false); const v = !!S.owned[n] || users(n).some(done); doneMemo.set(n, v); return v; };
+  // craft order: post-order walk from the target, prerequisites right before the icon that needs them
+  const order = [], seen = new Set();
+  (function walk(n) { if (seen.has(n)) return; seen.add(n);
+    const it = byName.get(n);
+    if (it && it.recipe && !buyPrice(it)) it.recipe.flatMap(g => g.map(([c]) => c)).filter(isIcon)
+      .sort((x, y) => earliest(x) - earliest(y) || depthOf(x) - depthOf(y)).forEach(walk);
+    order.push(n); })(S.target);
+  const partHave = (icon, c) => isIcon(c) ? done(c) : !!S.parts[icon + '|' + c];
+  const doneCount = order.filter(done).length;
+  document.getElementById('iconTotal').textContent = `Собрано иконок: ${doneCount} / ${order.length}`;
+  const acc = new Map();
+  let num = 0;
+  document.getElementById('iconSteps').innerHTML = order.map(n => {
+    num++;
+    const it = byName.get(n), d = done(n), base = !it.recipe || buyPrice(it);
+    const stats = it.stats ? STAT_ORDER.concat(Object.keys(it.stats)).filter((k, i, a) => a.indexOf(k) === i && typeof it.stats[k] === 'number').map(k => fmtStat(k, it.stats[k])).join(' · ') : '';
+    let parts = '', prog = '', src = '';
+    if (base) {
+      src = (it.dropped_by || []).map(b => { const r = rateFor(it, b); return bossLink(b) + (r != null ? ` ${pct(r)}` : ''); }).join(', ');
+      if (buyPrice(it)) src += (src ? ' · или ' : 'Покупка: ') + esc(buyPrice(it));
+      if (!d) acc.set(n, 1);
+    } else {
+      const comps = it.recipe.map(g => g[0]);
+      const x = comps.filter(([c]) => partHave(n, c)).length;
+      prog = `<span class="cprog ${x === comps.length ? 'full' : ''}">${x} / ${comps.length}</span>`;
+      parts = '<div class="iparts">' + comps.map(([c, q]) => {
+        const h = partHave(n, c), ic = isIcon(c), pr = buyPrice(byName.get(c));
+        if (!d && !h && !ic) acc.set(c, (acc.get(c) || 0) + q);
+        return `<div class="chip ${h ? 'have' : ''} ${ic ? 'isicon' : ''}" ${ic ? '' : `data-ipart="${esc(n + '|' + c)}"`} data-item="${esc(c)}" title="${ic ? 'Предыдущая иконка — отмечается в своём шаге' : ''}">
+          ${icon(c, 'sm')}<span class="ck">${h ? '✓' : ''}</span><span class="nm2" style="color:${col(byName.get(c)?.color)}">${esc(c)}</span>${q > 1 ? ` <span class="qty">×${q}</span>` : ''}${pr && !h ? ` <span class="p">(${esc(pr)})</span>` : ''}</div>`;
+      }).join('') + '</div>';
+    }
+    if (S.hideDone && d) return '';
+    const ready = !d && !base && it.recipe.every(g => partHave(n, g[0][0]));
+    return `<div class="istep ${d ? 'done' : ''} ${ready ? 'ready' : ''}"><div class="ihead"><span class="num">${num}</span>
+      <span data-item="${esc(n)}">${icon(n)}</span>
+      <div class="info">${itemLink(n)} ${prog}${ready ? ' <span style="color:#7ad07f;font-size:13px">можно крафтить</span>' : ''}
+        ${stats ? `<div class="st">${esc(stats)}</div>` : ''}${src ? `<div class="src">${src}</div>` : ''}</div>
+      <label><input type="checkbox" data-iown="${esc(n)}" ${S.owned[n] || d ? 'checked' : ''} ${d && !S.owned[n] ? 'disabled title="Использована в следующей иконке"' : ''}> ${base ? 'есть' : 'собрана'}</label></div>${parts}</div>`;
+  }).join('') || '<div class="muted">Все иконки собраны.</div>';
+  document.getElementById('iconNeedCount').textContent = acc.size ? '(' + acc.size + ')' : '';
+  document.getElementById('iconNeed').innerHTML = acc.size ? needGroupsHtml(acc) : '<div class="muted">Всё собрано.</div>';
+}
+iconSel.onchange = () => { iconState().target = iconSel.value; save(); renderIcons(); };
+document.getElementById('iconHide').onchange = e => { iconState().hideDone = e.target.checked; save(); renderIcons(); };
+document.getElementById('iconSteps').addEventListener('change', e => {
+  const n = e.target.dataset.iown; if (!n) return;
+  const S = iconState(); if (e.target.checked) S.owned[n] = 1; else delete S.owned[n];
+  save(); renderIcons();
+});
+document.getElementById('iconSteps').addEventListener('click', e => {
+  const c = e.target.closest('[data-ipart]'); if (!c || e.target.closest('a')) return;
+  const S = iconState(), k = c.dataset.ipart;
+  if (S.parts[k]) delete S.parts[k]; else S.parts[k] = 1;
+  save(); renderIcons();
+});
+renderIcons();
 
 /* =================== BOSSES =================== */
 const CAT_ORDER = ['Creep','Minor','Field','Mid','High','Late','Endgame'];
@@ -869,7 +941,8 @@ function applyBuild(b) {
   for (const s of SLOTS) if (b.equipped && b.equipped[s] && byName.has(b.equipped[s])) eq[s] = b.equipped[s];
   state.equipped = eq; state.hero = HEROS.some(h => h.id === b.hero) ? b.hero : '';
   state.checked = b.checked || {}; state.alt = b.alt || {};
-  heroSel.value = state.hero; save(); renderBuilder();
+  if (b.icons) state.icons = b.icons;
+  heroSel.value = state.hero; save(); renderBuilder(); renderIcons();
 }
 function renderBuilds() {
   const names = Object.keys(builds).sort((a, b) => a.localeCompare(b));
