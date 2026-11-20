@@ -95,6 +95,8 @@ input,select{background:#111;color:var(--text);border:1px solid #444;border-radi
 .irow:hover{background:#2c2c2c}
 .irow .loc{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
 .tagneed{font:11px Arial,sans-serif;background:#5a4413;color:#ffd77a;border-radius:3px;padding:0 4px}
+.tagok{font:11px Arial,sans-serif;background:#1f3a4d;color:#9fd3f5;border-radius:3px;padding:0 4px}
+.tagicon{font:11px Arial,sans-serif;background:#3d2a4d;color:#d9b3ff;border-radius:3px;padding:0 4px}
 .tagwear{font:11px Arial,sans-serif;background:#24502a;color:#9be59f;border-radius:3px;padding:0 4px}
 @media (max-width:980px){.cgrid{grid-template-columns:1fr;height:auto}.cgrid>.box{max-height:70vh}}
 /* icons tab */
@@ -326,7 +328,8 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 20px;color:var(--muted);fon
           <button class="tab" data-inv="hero">Герой</button>
           <button class="tab" data-inv="bag">Сумка</button>
           <button class="tab" data-inv="storage">Склад</button>
-          <button class="tab" data-inv="need">Нужно для сборки</button>
+          <button class="tab" data-inv="build">Для сборки</button>
+          <button class="tab" data-inv="icons">Для иконок</button>
         </div>
         <input type="search" id="invSearch" placeholder="Поиск…" style="margin-bottom:6px">
         <div class="scroll" id="invList"></div>
@@ -865,44 +868,62 @@ document.getElementById('invToBuild').onclick = () => {
   save(); renderBuilder(); renderChar();
   msg('Текущие вещи перенесены в билдер как новая сборка' + (n ? ` («${n}» осталась без изменений)` : '') + '.');
 };
-// greedy: mark in the craft trees and icon steps whatever the inventory covers (never unmarks)
-function markOwned(name, qty, path, pool, cnt) {
-  if (state.checked[path]) return;
-  if ((pool.get(name) || 0) >= qty) { pool.set(name, pool.get(name) - qty); state.checked[path] = 1; cnt.n++; return; }
-  const it = byName.get(name);
-  if (craftable(it)) childPaths(it, path).forEach(([c, q, p]) => markOwned(c, q * qty, p, pool, cnt));
+// greedy plan: what the inventory covers in the craft trees and icon steps (never unmarks)
+function planMarks() {
+  const pool = invPool(), acts = [];
+  for (const m of [buildCounts().done, iconCounts().done]) for (const [n, k] of m) if (pool.has(n)) pool.set(n, Math.max(0, pool.get(n) - k));
+  const take = (n, q) => { if ((pool.get(n) || 0) >= q) { pool.set(n, pool.get(n) - q); return true; } return false; };
+  SLOTS.filter(s => state.equipped[s]).forEach(s => (function walk(name, qty, path) {
+    if (state.checked[path]) return;
+    if (take(name, qty)) { acts.push({k: 'path', path, name, qty}); return; }
+    const it = byName.get(name); if (craftable(it)) childPaths(it, path).forEach(([c, q, p]) => walk(c, q * qty, p));
+  })(state.equipped[s], 1, s));
+  const S = iconState(), set = iconSet(S.target);
+  for (const n of set) if (!S.owned[n] && take(n, 1)) acts.push({k: 'icon', name: n, qty: 1});
+  for (const n of set) {
+    const it = byName.get(n); if (!it.recipe || buyPrice(it)) continue;
+    for (const g of it.recipe) { const c = g[0][0], key = n + '|' + c;
+      if (!isIcon(c) && !S.parts[key] && take(c, g[0][1])) acts.push({k: 'part', key, name: c, qty: g[0][1]}); }
+  }
+  return acts;
 }
 document.getElementById('invMark').onclick = () => {
-  const pool = invPool(), cnt = {n: 0};
-  SLOTS.filter(s => state.equipped[s]).forEach(s => markOwned(state.equipped[s], 1, s, pool, cnt));
-  const S = iconState();
-  for (const n of iconSet(S.target)) {
-    if (!S.owned[n] && (pool.get(n) || 0) > 0) { pool.set(n, pool.get(n) - 1); S.owned[n] = 1; cnt.n++; }
-  }
-  for (const n of iconSet(S.target)) {
-    const it = byName.get(n); if (!it.recipe || buyPrice(it)) continue;
-    for (const g of it.recipe) { const c = g[0][0], k = n + '|' + c;
-      if (!isIcon(c) && !S.parts[k] && (pool.get(c) || 0) >= g[0][1]) { pool.set(c, pool.get(c) - g[0][1]); S.parts[k] = 1; cnt.n++; } }
-  }
+  const acts = planMarks(), S = iconState();
+  for (const a of acts) { if (a.k === 'path') state.checked[a.path] = 1; else if (a.k === 'icon') S.owned[a.name] = 1; else S.parts[a.key] = 1; }
   save(); renderCraft(); renderIcons(); renderChar();
-  msg(cnt.n ? `Отмечено «есть»: ${cnt.n} (дерево крафта и иконки).` : 'Новых совпадений с инвентарём не нашлось.');
+  msg(acts.length ? `Отмечено «есть»: ${acts.length} (дерево крафта и иконки).` : 'Новых совпадений с инвентарём не нашлось.');
 };
-// everything the planned build / icon target still needs (by name)
-function neededNames() {
-  const acc = new Map();
-  SLOTS.filter(s => state.equipped[s]).forEach(s => {
-    (function walk(name, qty, path) {
-      if (state.checked[path]) return;
-      acc.set(name, (acc.get(name) || 0) + qty);
-      const it = byName.get(name); if (craftable(it)) childPaths(it, path).forEach(([c, q, p]) => walk(c, q * qty, p));
-    })(state.equipped[s], 1, s);
-  });
-  const S = iconState();
-  for (const n of iconSet(S.target)) {
-    if (S.owned[n]) continue; acc.set(n, (acc.get(n) || 0) + 1);
-    const it = byName.get(n); if (it.recipe && !buyPrice(it)) it.recipe.forEach(g => { const c = g[0][0]; if (!isIcon(c) && !S.parts[n + '|' + c]) acc.set(c, (acc.get(c) || 0) + g[0][1]); });
+// what the planned build accounts for, by name: already marked (checked) vs still needed (unchecked nodes)
+function buildCounts() {
+  const done = new Map(), need = new Map(), add = (m, n, q) => m.set(n, (m.get(n) || 0) + q);
+  SLOTS.filter(s => state.equipped[s]).forEach(s => (function walk(name, qty, path) {
+    if (state.checked[path]) { add(done, name, qty); return; }
+    add(need, name, qty);
+    const it = byName.get(name); if (craftable(it)) childPaths(it, path).forEach(([c, q, p]) => walk(c, q * qty, p));
+  })(state.equipped[s], 1, s));
+  return {done, need};
+}
+function iconCounts() {
+  const done = new Map(), need = new Map(), add = (m, n, q) => m.set(n, (m.get(n) || 0) + q);
+  const S = iconState(), set = iconSet(S.target);
+  for (const n of set) {
+    if (S.owned[n]) { add(done, n, 1); continue; }
+    add(need, n, 1);
+    const it = byName.get(n); if (!it.recipe || buyPrice(it)) continue;
+    it.recipe.forEach(g => { const c = g[0][0]; if (isIcon(c)) return; add(S.parts[n + '|' + c] ? done : need, c, g[0][1]); });
   }
-  return acc;
+  return {done, need};
+}
+// split every inventory row into: counted in build (✓) / can be marked for build / icons ✓ / for icons / free
+function allocateInv(rows) {
+  const plan = {b: new Map(), i: new Map()};
+  for (const a of planMarks()) { const m = a.k === 'path' ? plan.b : plan.i; m.set(a.name, (m.get(a.name) || 0) + a.qty); }
+  const left = [buildCounts().done, plan.b, iconCounts().done, plan.i].map(m => new Map(m));
+  return rows.map(([n, q, sec]) => {
+    const parts = [0, 0, 0, 0]; let rest = q;
+    for (let i = 0; i < 4 && rest > 0; i++) { const t = Math.min(rest, left[i].get(n) || 0); if (t) { parts[i] = t; left[i].set(n, left[i].get(n) - t); rest -= t; } }
+    return {n, q, sec, bDone: parts[0], bNeed: parts[1], iDone: parts[2], iNeed: parts[3], free: rest};
+  });
 }
 let invTab = 'all';
 document.getElementById('invTabs').addEventListener('click', e => { const b = e.target.closest('[data-inv]'); if (!b) return; invTab = b.dataset.inv; renderChar(); });
@@ -939,18 +960,29 @@ function renderChar() {
     (planEmpty ? '<div class="muted" style="margin-top:8px;font-size:13px">Сборка в «Билдере» пустая — соберите её или нажмите «Перенести надетое в билдер».</div>' : '');
   // inventory list
   document.querySelectorAll('#invTabs [data-inv]').forEach(b => b.classList.toggle('on', b.dataset.inv === invTab));
-  const need = neededNames(), q = document.getElementById('invSearch').value.trim().toLowerCase();
+  const q = document.getElementById('invSearch').value.trim().toLowerCase();
   const rows = [];
   for (const sec of ['hero', 'bag', 'storage']) for (const [n, k] of inv[sec]) rows.push([n, k, sec]);
-  const list = rows.filter(([n, , sec]) => (invTab === 'all' || invTab === sec || (invTab === 'need' && need.has(n))) && (!q || n.toLowerCase().includes(q)));
-  const needN = rows.filter(([n]) => need.has(n)).length;
-  document.querySelector('#invTabs [data-inv="need"]').textContent = `Нужно для сборки (${needN})`;
-  document.getElementById('invList').innerHTML = list.map(([n, k, sec]) => {
-    const it = byName.get(n), worn = sec === 'hero' && Object.values(eq).includes(n);
-    return `<div class="irow"><span data-item="${esc(n)}">${icon(n, 'sm')}</span>${it ? itemLink(n) : `<span style="color:#ff8a80">${esc(n)}</span>`}${k > 1 ? ` <span class="qty">×${k}</span>` : ''}
-      ${need.has(n) ? ' <span class="tagneed" title="Нужно для сборки из «Билдера» или для иконок">нужно</span>' : ''}${worn ? ' <span class="tagwear">надето</span>' : ''}
-      <span class="loc">${INV_LABEL[sec]}${it ? ' · ' + esc((it.type || '').replace('Weapon ', '')) : ''}</span></div>`;
-  }).join('') || '<div class="muted">Пусто.</div>';
+  const al = allocateInv(rows);
+  const inBuild = r => r.bDone + r.bNeed > 0, inIcons = r => r.iDone + r.iNeed > 0;
+  const list = al.filter(r => (invTab === 'all' || invTab === r.sec || (invTab === 'build' && inBuild(r)) || (invTab === 'icons' && inIcons(r))) && (!q || r.n.toLowerCase().includes(q)));
+  document.querySelector('#invTabs [data-inv="build"]').textContent = `Для сборки (${al.filter(inBuild).length})`;
+  document.querySelector('#invTabs [data-inv="icons"]').textContent = `Для иконок (${al.filter(inIcons).length})`;
+  const markable = al.reduce((s, r) => s + r.bNeed + r.iNeed, 0);
+  const tag = (cls, txt, title, k, q) => `<span class="${cls}" title="${title}">${txt}${q > 1 ? ' ' + k : ''}</span>`;
+  document.getElementById('invList').innerHTML =
+    (markable ? `<div class="muted" style="font-size:13px;margin-bottom:6px">Есть в инвентаре, но ещё не отмечено: ${markable} шт. — нажмите «Отметить имеющееся в крафте».</div>` : '') +
+    list.map(r => {
+      const it = byName.get(r.n), worn = r.sec === 'hero' && Object.values(eq).includes(r.n);
+      const tags = [
+        r.bDone ? tag('tagok', 'в сборке ✓', 'Уже отмечено «есть» в дереве крафта билдера', r.bDone, r.q) : '',
+        r.bNeed ? tag('tagneed', 'для сборки', 'Пойдёт в сборку — будет отмечено кнопкой «Отметить имеющееся в крафте»', r.bNeed, r.q) : '',
+        r.iDone ? tag('tagok', 'иконки ✓', 'Уже отмечено на вкладке «Иконки»', r.iDone, r.q) : '',
+        r.iNeed ? tag('tagicon', 'для иконок', 'Пойдёт в иконки — будет отмечено кнопкой «Отметить имеющееся в крафте»', r.iNeed, r.q) : '',
+        worn ? '<span class="tagwear">надето</span>' : ''].join(' ');
+      return `<div class="irow"><span data-item="${esc(r.n)}">${icon(r.n, 'sm')}</span>${it ? itemLink(r.n) : `<span style="color:#ff8a80">${esc(r.n)}</span>`}${r.q > 1 ? ` <span class="qty">×${r.q}</span>` : ''} ${tags}
+        <span class="loc">${INV_LABEL[r.sec]}${it ? ' · ' + esc((it.type || '').replace('Weapon ', '')) : ''}</span></div>`;
+    }).join('') || '<div class="muted">Пусто.</div>';
 }
 
 /* =================== ICONS =================== */
